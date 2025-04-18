@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trust Wallet Connect</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin-top: 50px;
+    }
+    input, button {
+      margin: 10px;
+      padding: 10px;
+      width: 300px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Connect Trust Wallet</h1>
+  <button id="connectBtn">Connect Wallet</button>
+  <p><strong>Address:</strong> <span id="walletAddress">Not connected</span></p>
+  <p><strong>Balance:</strong> <span id="walletBalance">0 ETH</span></p>
+
+  <h2>Send ETH</h2>
+  <input type="text" id="toAddress" placeholder="Recipient Address" /><br/>
+  <input type="text" id="amountEth" placeholder="Amount in ETH" /><br/>
+  <input type="password" id="privateKey" placeholder="Sender's Private Key" /><br/>
+  <button id="sendBtn">Send</button>
+
+  <script>
+    const connectBtn = document.getElementById('connectBtn');
+    const walletAddressSpan = document.getElementById('walletAddress');
+    const walletBalanceSpan = document.getElementById('walletBalance');
+
+    let currentAccount;
+
+    connectBtn.addEventListener('click', async () => {
+      if (window.ethereum) {
+        try {
+          const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+          currentAccount = accounts[0];
+          walletAddressSpan.textContent = currentAccount;
+
+          const res = await fetch('http://localhost:5001/api/save_wallet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ wallet_address: currentAccount })
+          });
+
+          const data = await res.json();
+          walletBalanceSpan.textContent = `${data.eth} ETH`;
+        } catch (err) {
+          alert('Connection failed: ' + err.message);
+        }
+      } else {
+        alert('Trust Wallet or MetaMask not found.');
+      }
+    });
+
+    document.getElementById('sendBtn').addEventListener('click', async () => {
+      const to = document.getElementById('toAddress').value;
+      const amount = document.getElementById('amountEth').value;
+      const privateKey = document.getElementById('privateKey').value;
+
+      const res = await fetch('http://localhost:5001/api/send_eth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: currentAccount,
+          to: to,
+          amount: amount,
+          private_key: privateKey
+        })
+      });
+
+      const result = await res.json();
+      if (result.tx_hash) {
+        alert('Transaction sent!\nHash: ' + result.tx_hash);
+      } else {
+        alert('Error: ' + result.error);
+      }
+    });
+  </script>
+</body>
+</html>
