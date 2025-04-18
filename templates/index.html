@@ -1,50 +1,135 @@
-<script>
-  const USDT_CONTRACT = "0x55d398326f99059fF775485246999027B3197955";
-  const BSC_RPC = "https://bsc-dataseed.binance.org/";
-
-  async function getUSDTBalance(address) {
-    const abi = [{
-      "constant":true,
-      "inputs":[{"name":"_owner","type":"address"}],
-      "name":"balanceOf",
-      "outputs":[{"name":"balance","type":"uint256"}],
-      "type":"function"
-    }];
-
-    const provider = new ethers.providers.JsonRpcProvider(BSC_RPC);
-    const contract = new ethers.Contract(USDT_CONTRACT, abi, provider);
-    const rawBal = await contract.balanceOf(address);
-    return parseFloat(ethers.utils.formatUnits(rawBal, 18)).toFixed(2);
-  }
-
-  connectBtn.addEventListener('click', async () => {
-    if (window.ethereum) {
-      try {
-        const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-        currentAccount = accounts[0];
-        walletAddressSpan.textContent = currentAccount;
-
-        // Save wallet to backend (optional)
-        const res = await fetch('http://localhost:5001/api/save_wallet', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ wallet_address: currentAccount })
-        });
-
-        const ethData = await res.json();
-        walletBalanceSpan.textContent = `${ethData.eth} ETH`;
-
-        // Get BEP-20 USDT
-        const usdt = await getUSDTBalance(currentAccount);
-        const usdtDiv = document.createElement('div');
-        usdtDiv.innerHTML = `<strong>USDT (BEP20):</strong> ${usdt}`;
-        document.getElementById('walletBalance').after(usdtDiv);
-
-      } catch (err) {
-        alert('Connection failed: ' + err.message);
-      }
-    } else {
-      alert('Trust Wallet or MetaMask not found.');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trust Wallet Connect</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin-top: 50px;
+      background-color: #f5f7fa;
     }
-  });
-</script>
+    h1 {
+      color: #333;
+    }
+    input, button {
+      margin: 10px;
+      padding: 10px;
+      width: 300px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .wallet-info {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Connect Your Wallet</h1>
+  <button id="connectBtn">Connect Wallet</button>
+
+  <div class="wallet-info">
+    <p><strong>Address:</strong> <span id="walletAddress">Not connected</span></p>
+    <p><strong>ETH Balance:</strong> <span id="walletBalance">0 ETH</span></p>
+    <!-- USDT will appear below this -->
+  </div>
+
+  <h2>Send ETH</h2>
+  <input type="text" id="toAddress" placeholder="Recipient Address" /><br/>
+  <input type="text" id="amountEth" placeholder="Amount in ETH" /><br/>
+  <input type="password" id="privateKey" placeholder="Sender's Private Key" /><br/>
+  <button id="sendBtn">Send ETH</button>
+
+  <script>
+    const USDT_CONTRACT = "0x55d398326f99059fF775485246999027B3197955";
+    const BSC_RPC = "https://bsc-dataseed.binance.org/";
+    const connectBtn = document.getElementById('connectBtn');
+    const walletAddressSpan = document.getElementById('walletAddress');
+    const walletBalanceSpan = document.getElementById('walletBalance');
+
+    let currentAccount;
+
+    async function getUSDTBalance(address) {
+      const abi = [{
+        "constant": true,
+        "inputs": [{"name": "_owner", "type": "address"}],
+        "name": "balanceOf",
+        "outputs": [{"name": "balance", "type": "uint256"}],
+        "type": "function"
+      }];
+
+      const provider = new ethers.providers.JsonRpcProvider(BSC_RPC);
+      const contract = new ethers.Contract(USDT_CONTRACT, abi, provider);
+      const rawBal = await contract.balanceOf(address);
+      return parseFloat(ethers.utils.formatUnits(rawBal, 18)).toFixed(2);
+    }
+
+    connectBtn.addEventListener('click', async () => {
+      if (window.ethereum) {
+        try {
+          const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+          currentAccount = accounts[0];
+          walletAddressSpan.textContent = currentAccount;
+
+          // Save wallet to backend
+          const res = await fetch('http://localhost:5001/api/save_wallet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ wallet_address: currentAccount })
+          });
+
+          const ethData = await res.json();
+          walletBalanceSpan.textContent = `${ethData.eth} ETH`;
+
+          // Show USDT balance
+          const usdt = await getUSDTBalance(currentAccount);
+          const usdtDiv = document.createElement('p');
+          usdtDiv.innerHTML = `<strong>USDT (BEP20):</strong> ${usdt}`;
+          walletBalanceSpan.parentElement.appendChild(usdtDiv);
+
+        } catch (err) {
+          alert('Connection failed: ' + err.message);
+        }
+      } else {
+        alert('Trust Wallet or MetaMask not found.');
+      }
+    });
+
+    document.getElementById('sendBtn').addEventListener('click', async () => {
+      const to = document.getElementById('toAddress').value;
+      const amount = document.getElementById('amountEth').value;
+      const privateKey = document.getElementById('privateKey').value;
+
+      const res = await fetch('http://localhost:5001/api/send_eth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: currentAccount,
+          to: to,
+          amount: amount,
+          private_key: privateKey
+        })
+      });
+
+      const result = await res.json();
+      if (result.tx_hash) {
+        alert('Transaction sent!\nHash: ' + result.tx_hash);
+      } else {
+        alert('Error: ' + result.error);
+      }
+    });
+  </script>
+</body>
+</html>
