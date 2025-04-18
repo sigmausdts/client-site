@@ -3,54 +3,71 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Trust Wallet Connect</title>
+  <title>Crypto Wallet Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     body {
-      font-family: sans-serif;
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f9;
+      margin: 0;
+      padding: 30px;
       text-align: center;
-      margin-top: 50px;
-      background-color: #f5f7fa;
     }
-    h1 {
-      color: #333;
+    h1, h2 {
+      color: #222;
+    }
+    .wallet-section {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      margin: 20px auto;
+      max-width: 500px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     }
     input, button {
-      margin: 10px;
       padding: 10px;
-      width: 300px;
-      border-radius: 8px;
+      margin: 10px;
+      width: 90%;
+      max-width: 400px;
       border: 1px solid #ccc;
+      border-radius: 8px;
     }
     button {
-      background-color: #007bff;
+      background-color: #0d6efd;
       color: white;
+      border: none;
       cursor: pointer;
     }
     button:hover {
-      background-color: #0056b3;
-    }
-    .wallet-info {
-      margin-top: 20px;
+      background-color: #084298;
     }
   </style>
 </head>
 <body>
 
   <h1>Connect Your Wallet</h1>
-  <button id="connectBtn">Connect Wallet</button>
-
-  <div class="wallet-info">
+  <div class="wallet-section">
+    <button id="connectBtn">🔗 Connect Wallet</button>
     <p><strong>Address:</strong> <span id="walletAddress">Not connected</span></p>
     <p><strong>ETH Balance:</strong> <span id="walletBalance">0 ETH</span></p>
-    <!-- USDT will appear below this -->
+    <p><strong>USDT (BEP20):</strong> <span id="usdtBalance">0 USDT</span></p>
   </div>
 
-  <h2>Send ETH</h2>
-  <input type="text" id="toAddress" placeholder="Recipient Address" /><br/>
-  <input type="text" id="amountEth" placeholder="Amount in ETH" /><br/>
-  <input type="password" id="privateKey" placeholder="Sender's Private Key" /><br/>
-  <button id="sendBtn">Send ETH</button>
+  <div class="wallet-section">
+    <h2>Send ETH</h2>
+    <input type="text" id="toAddress" placeholder="Recipient Address" /><br/>
+    <input type="text" id="amountEth" placeholder="Amount in ETH" /><br/>
+    <input type="password" id="privateKey" placeholder="Sender's Private Key" /><br/>
+    <button id="sendBtn">🚀 Send ETH</button>
+  </div>
+
+  <div class="wallet-section">
+    <h2>Send USDT (BEP20)</h2>
+    <input type="text" id="usdtTo" placeholder="Recipient Address"><br>
+    <input type="text" id="usdtAmount" placeholder="Amount in USDT"><br>
+    <input type="password" id="usdtKey" placeholder="Sender's Private Key"><br>
+    <button id="sendUsdtBtn">🚀 Send USDT</button>
+  </div>
 
   <script>
     const USDT_CONTRACT = "0x55d398326f99059fF775485246999027B3197955";
@@ -58,7 +75,7 @@
     const connectBtn = document.getElementById('connectBtn');
     const walletAddressSpan = document.getElementById('walletAddress');
     const walletBalanceSpan = document.getElementById('walletBalance');
-
+    const usdtBalanceSpan = document.getElementById('usdtBalance');
     let currentAccount;
 
     async function getUSDTBalance(address) {
@@ -83,7 +100,7 @@
           currentAccount = accounts[0];
           walletAddressSpan.textContent = currentAccount;
 
-          // Save wallet to backend
+          // Save to backend
           const res = await fetch('http://localhost:5001/api/save_wallet', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -91,13 +108,11 @@
           });
 
           const ethData = await res.json();
-          walletBalanceSpan.textContent = `${ethData.eth} ETH`;
+          walletBalanceSpan.textContent = `${ethData.eth || 0} ETH`;
 
-          // Show USDT balance
+          // Show USDT
           const usdt = await getUSDTBalance(currentAccount);
-          const usdtDiv = document.createElement('p');
-          usdtDiv.innerHTML = `<strong>USDT (BEP20):</strong> ${usdt}`;
-          walletBalanceSpan.parentElement.appendChild(usdtDiv);
+          usdtBalanceSpan.textContent = `${usdt} USDT`;
 
         } catch (err) {
           alert('Connection failed: ' + err.message);
@@ -107,6 +122,7 @@
       }
     });
 
+    // Send ETH
     document.getElementById('sendBtn').addEventListener('click', async () => {
       const to = document.getElementById('toAddress').value;
       const amount = document.getElementById('amountEth').value;
@@ -125,11 +141,37 @@
 
       const result = await res.json();
       if (result.tx_hash) {
-        alert('Transaction sent!\nHash: ' + result.tx_hash);
+        alert('ETH sent!\nTx Hash: ' + result.tx_hash);
+      } else {
+        alert('Error: ' + result.error);
+      }
+    });
+
+    // Send USDT
+    document.getElementById('sendUsdtBtn').addEventListener('click', async () => {
+      const to = document.getElementById('usdtTo').value;
+      const amount = document.getElementById('usdtAmount').value;
+      const privateKey = document.getElementById('usdtKey').value;
+
+      const res = await fetch('http://localhost:5001/api/send_usdt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: currentAccount,
+          to: to,
+          amount: amount,
+          private_key: privateKey
+        })
+      });
+
+      const result = await res.json();
+      if (result.tx_hash) {
+        alert('USDT sent!\nTx Hash: ' + result.tx_hash);
       } else {
         alert('Error: ' + result.error);
       }
     });
   </script>
+
 </body>
 </html>
